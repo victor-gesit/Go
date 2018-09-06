@@ -35,8 +35,19 @@ class ViewController: UIViewController {
     var destinationLocation: CLLocationCoordinate2D? = nil
     var pickedPlace: GMSPlace?
     
-    var navigating: Bool = false
-    var startPointSelected: Bool = false
+    var carMarker = GMSMarker(position: CLLocationCoordinate2D(latitude: 0, longitude: 0))
+    var walkingMarker = GMSMarker(position: CLLocationCoordinate2D(latitude: 0, longitude: 0))
+    var activeMarker = GMSMarker(position: CLLocationCoordinate2D(latitude: 0, longitude: 0))
+    var destinationMarker = GMSMarker(position: CLLocationCoordinate2D(latitude: 0, longitude: 0))
+    
+    var inNavigationMode = false
+    var navigating = false
+    var startPointSelected = false
+    
+    
+    var lastMapBearing: Double? = 0.0
+    var currentRouteBearing = 0.0
+    var markerBearing: Double? = 0.0
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -50,37 +61,48 @@ class ViewController: UIViewController {
         locationManager.delegate = self
         locationManager.requestAlwaysAuthorization()
         locationManager.requestWhenInUseAuthorization()
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        
+        locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         currentLocation = locationManager.location?.coordinate
         self.mapView.animate(toLocation: currentLocation!)
         self.mapView.animate(toZoom: 18)
         
         placesClient = GMSPlacesClient.shared()
         selectedButton = fromButton
+        startLocation = locationManager.location?.coordinate
+        
         if locationAccess() {
-            print(locationManager.requestLocation())
+            locationManager.startUpdatingLocation()
+            locationManager.startUpdatingHeading()
         }
         autocompleteVC = GMSAutocompleteViewController()
         autocompleteVC.delegate = self
         
+        carMarker.icon = UIImage(named: "car")
+        carMarker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
+        walkingMarker.icon = UIImage(named: "walking")
+        destinationMarker.icon = UIImage(named: "flag")
         setupView()
         getCurrentPlace(){ currentPlace in
             self.fromButton.setTitle(currentPlace, for: .normal)
         }
     }
     
-    private func findMarkerCoordinates() -> CLLocation{
+    private func findMarkerCoordinates() -> CLLocationCoordinate2D{
         let mapWith = view.bounds.width
         let mapHeight = view.bounds.height
         let mapCenterPoint = CGPoint(x: mapWith/2, y: mapHeight/2)
         let markerCoordinates = mapView.projection.coordinate(for: mapCenterPoint)
-        let mapCenterLocation = CLLocation(latitude: markerCoordinates.latitude, longitude: markerCoordinates.longitude)
-        return mapCenterLocation
+        return markerCoordinates
     }
     
     private func setupView() {
         fromView.addShadows(offset: 2, radius: 2, opacity: 0.7)
         toView.addShadows(offset: 2, radius: 1, opacity: 0.7)
+        fromButton.addShadows(offset: 0.5, radius: 0.2, opacity: 0.7)
+        toButton.addShadows(offset: 0.5, radius: 0.2, opacity: 0.7)
+        currentLocationButton.addShadows(offset: 2, radius: 1, opacity: 0.7)
+        navigationMethodView.addShadows(offset: 2, radius: 1, opacity: 0.7)
     }
     
     @IBAction func goFromButton(_ sender: UIButton) {
@@ -94,7 +116,11 @@ class ViewController: UIViewController {
     }
     
     @IBAction func currentLocationButton(_ sender: UIButton) {
-        currentLocation = locationManager.location?.coordinate
+        if inNavigationMode {
+            navigating = true
+        } else {
+            currentLocation = locationManager.location?.coordinate
+        }
         CATransaction.begin()
         CATransaction.setValue(0.5, forKey: kCATransactionAnimationDuration)
         self.mapView.animate(toLocation: currentLocation!)
@@ -104,7 +130,66 @@ class ViewController: UIViewController {
         CATransaction.setValue(1.5, forKey: kCATransactionAnimationDuration)
         self.mapView.animate(toZoom: 18)
         CATransaction.commit()
-
+    }
+    @IBAction func driveButtonTapped(_ sender: UIButton) {
+        if startLocation == nil {
+            showNotification(title: "Error", message: "Select a start point")
+            return
+        }
+        if destinationLocation == nil {
+            showNotification(title: "Error", message: "Select a destination")
+            return
+        }
+        if destinationMarker.map == nil {
+            dropMarker(marker: destinationMarker, at: destinationLocation!, on: mapView)
+        }
+        activeMarker = carMarker
+        inNavigationMode = true
+        navigating = true
+        
+        UIView.animate(withDuration: 0.5) {
+            self.markerImageView.alpha = 0.0
+            let compassImage = UIImage(named: "compass")
+            self.currentLocationButton.setImage(compassImage, for: .normal)
+        }
+        
+        APICalls.shared.drawRoute(from: startLocation!, to: destinationLocation!, on: mapView, mode: .driving) { (vehicleLocation, navInstruction, direction) in
+            if let vehicleLocation = vehicleLocation {
+                self.activeMarker.position = vehicleLocation
+                self.markerBearing = direction - (self.lastMapBearing ?? 0)
+                self.activeMarker.rotation = self.markerBearing!
+                self.activeMarker.map = self.mapView
+            }
+        }
+    }
+    
+    @IBAction func walkButtonTapped(_ sender: Any) {
+        if startLocation == nil {
+            showNotification(title: "Error", message: "Select a start point")
+            return
+        }
+        if destinationLocation == nil {
+            showNotification(title: "Error", message: "Select a destination")
+            return
+        }
+        activeMarker = walkingMarker
+        dropMarker(marker: destinationMarker, at: destinationLocation!, on: mapView)
+        APICalls.shared.drawRoute(from: startLocation!, to: destinationLocation!, on: mapView, mode: .walking) { (vehicleLocation, navInstruction, direction) in
+            if let vehicleLocation = vehicleLocation {
+                self.currentLocation = vehicleLocation
+                self.activeMarker.position = vehicleLocation
+                self.currentRouteBearing = direction
+                self.activeMarker.rotation = direction - (self.lastMapBearing ?? 0)
+                self.activeMarker.map = self.mapView
+            }
+        }
+    }
+    
+    private func showNotification(title: String, message: String) {
+        let notificationController = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        let okAction = UIAlertAction(title: "Okay", style: .default, handler: nil)
+        notificationController.addAction(okAction)
+        self.present(notificationController, animated: true, completion: nil)
     }
     
     private func locationAccess() -> Bool {
@@ -119,6 +204,15 @@ class ViewController: UIViewController {
             return false
         }
     }
+    
+    private func dropMarker( marker: GMSMarker, at location: CLLocationCoordinate2D, on mapView: GMSMapView) {
+        marker.position = location
+        marker.map = mapView
+    }
+    private func toggleNavigationCamera(to state: Bool) {
+        navigating = state
+        
+    }
 }
 
 
@@ -126,6 +220,12 @@ extension ViewController: GMSAutocompleteViewControllerDelegate {
     func viewController(_ viewController: GMSAutocompleteViewController, didAutocompleteWith place: GMSPlace) {
         pickedPlace = place
         viewController.dismiss(animated: true) {
+            if self.selectedButton == self.fromButton {
+                self.startLocation = place.coordinate
+            }
+            if self.selectedButton == self.toButton {
+                self.destinationLocation = place.coordinate
+            }
             self.selectedButton.setTitle(place.name, for: .normal)
         }
     }
@@ -144,7 +244,30 @@ extension ViewController: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("An error occured")
     }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+//        lastUserBearing = newHeading.trueHeading
+//        activeMarker.rotation = lastUserBearing! - (currentRouteBearing)
+//        if navigating {
+//            CATransaction.begin()
+//            CATransaction.setAnimationDuration(0.2)
+//            mapView.animate(toBearing: markerBearing!)
+//            CATransaction.commit()
+//        }
+    }
+    
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if inNavigationMode {
+            let location = locations.last?.coordinate
+            APICalls.shared.drawRoute(from: location!, to: destinationLocation!, on: mapView, mode: .driving) { (vehicleLocation, navInstruction, direction) in
+                self.currentRouteBearing = direction
+                self.currentLocation = vehicleLocation
+                self.markerBearing = (direction) - self.lastMapBearing!
+                if let carLocation = vehicleLocation {
+                    self.moveAndCenterMarker(coordinates: carLocation, degrees: self.markerBearing!, duration: 0.5, marker: self.carMarker)
+                }
+            }
+        }
     }
     private func getCurrentPlace(completion: @escaping (String?) -> Void) {
         var currentPlace: String? = nil
@@ -169,29 +292,37 @@ extension ViewController: CLLocationManagerDelegate {
 
 extension ViewController: GMSMapViewDelegate {
     func mapView(_ mapView: GMSMapView, willMove gesture: Bool) {
-        if !navigating && !startPointSelected {
+        if gesture { navigating = false }
+        if !inNavigationMode && !startPointSelected {
             activityIndicator.startAnimating()
         }
     }
     func mapView(_ mapView: GMSMapView, didChange position: GMSCameraPosition) {
+        lastMapBearing = position.bearing
+        markerBearing = (currentRouteBearing) - lastMapBearing!
+        
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.1)
+        activeMarker.rotation = markerBearing!
+        CATransaction.commit()
     }
-    
     func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
-        activityIndicator.startAnimating()
-        if !navigating && !startPointSelected {
+        if !inNavigationMode && !startPointSelected {
+            activityIndicator.startAnimating()
             let markerLocation = findMarkerCoordinates()
             getPlaceName(place: markerLocation) { (placeName) in
                 self.activityIndicator.stopAnimating()
                 if let name = placeName {
                     self.fromButton.setTitle(name, for: .normal)
                 }
+                self.activityIndicator.stopAnimating()
             }
-            startLocation = markerLocation.coordinate
+            startLocation = markerLocation
         }
     }
     
-    private func getPlaceName(place: CLLocation, completion: @escaping(_ placeName: String?) -> Void){
-        GMSGeocoder().reverseGeocodeCoordinate(place.coordinate) { (response, error) in
+    private func getPlaceName(place: CLLocationCoordinate2D, completion: @escaping(_ placeName: String?) -> Void){
+        GMSGeocoder().reverseGeocodeCoordinate(place) { (response, error) in
             if error != nil {
                 completion(nil)
             }
@@ -206,4 +337,28 @@ extension ViewController: GMSMapViewDelegate {
             }
         }
     }
+    
+    func moveAndCenterMarker(coordinates: CLLocationCoordinate2D, degrees: CLLocationDegrees, duration: Double, marker: GMSMarker) {
+        // Keep Rotation Short
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.5)
+        marker.rotation = degrees
+        CATransaction.commit()
+        
+        // Movement
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(duration)
+        marker.position = coordinates
+        
+        // Center Map View if actually driving
+        if navigating {
+            print("Now Navigating!!!")
+            let camera = GMSCameraUpdate.setTarget(coordinates)
+            mapView.animate(with: camera)
+            mapView.animate(toViewingAngle: 30)
+        }
+        print("Navigating... ", navigating)
+        CATransaction.commit()
+    }
+    
 }

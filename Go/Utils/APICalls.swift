@@ -23,7 +23,6 @@ class APICalls {
     static var shared = APICalls()
     private static let mapsAPIKey = Utilities.valueForAPIKey(keyname: "GOOGLE_MAPS_API_KEY")
     var timeOfLastAPICall = CACurrentMediaTime()
-    var firstRoute = 0
     private var polylines: [GMSPolyline?] = []
     
     private init() {}
@@ -80,10 +79,6 @@ class APICalls {
                         let vehicleLocation = CLLocationCoordinate2D(latitude: latStart, longitude: longStart)
                         let destination = GMSPath.init(fromEncodedPath: microPointsValue)
                         
-                        if (self.firstRoute < 1) {
-                            print(route, "RouteRoute")
-                            self.firstRoute += 1
-                        }
                         let destinationCoordinate = destination?.coordinate(at: 1)
                         if let destCoord = destinationCoordinate {
                             let direction = self.getBearing(from: vehicleLocation, to: destCoord)

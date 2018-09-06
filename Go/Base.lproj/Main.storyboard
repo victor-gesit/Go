@@ -130,6 +130,9 @@
                                             <constraint firstAttribute="height" constant="40" id="h06-bW-BJo"/>
                                         </constraints>
                                         <state key="normal" image="drive"/>
+                                        <connections>
+                                            <action selector="driveButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="cpk-Ja-0C3"/>
+                                        </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" showsTouchWhenHighlighted="YES" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="tII-0S-q5q">
                                         <rect key="frame" x="0.0" y="50" width="40" height="40"/>
@@ -138,6 +141,9 @@
                                             <constraint firstAttribute="height" constant="40" id="TNH-hz-ekv"/>
                                         </constraints>
                                         <state key="normal" image="walk"/>
+                                        <connections>
+                                            <action selector="walkButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="gOA-wd-Zkn"/>
+                                        </connections>
                                     </button>
                                 </subviews>
                                 <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
@@ -153,7 +159,7 @@
                                 </constraints>
                             </view>
                             <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="pin" translatesAutoresizingMaskIntoConstraints="NO" id="DRR-mj-AfK">
-                                <rect key="frame" x="161" y="275.5" width="52" height="52"/>
+                                <rect key="frame" x="161" y="281.5" width="52" height="52"/>
                                 <constraints>
                                     <constraint firstAttribute="width" constant="52" id="4st-a3-sZB"/>
                                     <constraint firstAttribute="height" constant="52" id="oYH-ec-jhp"/>
@@ -170,7 +176,7 @@
                             <constraint firstItem="9sK-Cg-k78" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="20" id="IXv-V6-fCw"/>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="vun-rf-KRT" secondAttribute="trailing" constant="20" id="J88-8U-hel"/>
                             <constraint firstItem="vun-rf-KRT" firstAttribute="top" secondItem="0hL-aN-nmG" secondAttribute="bottom" constant="15" id="OM7-gG-WQ4"/>
-                            <constraint firstItem="DRR-mj-AfK" firstAttribute="centerY" secondItem="8bC-Xf-vdC" secondAttribute="centerY" constant="-32" id="ZO7-vz-Jo9"/>
+                            <constraint firstItem="DRR-mj-AfK" firstAttribute="centerY" secondItem="8bC-Xf-vdC" secondAttribute="centerY" constant="-26" id="ZO7-vz-Jo9"/>
                             <constraint firstItem="DRR-mj-AfK" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="edq-iP-RBu"/>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="9sK-Cg-k78" secondAttribute="trailing" constant="20" id="itD-Yo-HwW"/>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="bottom" secondItem="1mR-t4-phw" secondAttribute="bottom" constant="20" id="zkQ-cm-Y7p"/>
@@ -195,9 +201,9 @@
         </scene>
     </scenes>
     <resources>
-        <image name="currentLocation" width="300" height="300"/>
+        <image name="currentLocation" width="512" height="512"/>
         <image name="drive" width="512" height="512"/>
         <image name="pin" width="512" height="512"/>
-        <image name="walk" width="981" height="936"/>
+        <image name="walk" width="512" height="512"/>
     </resources>
 </document>
