@@ -25,10 +25,10 @@ class APICalls {
     var timeOfLastAPICall = CACurrentMediaTime()
     private var polylines: [GMSPolyline?] = []
     
+    var route1 = 0
     private init() {}
     
-    public func drawRoute(from start: CLLocationCoordinate2D, to end: CLLocationCoordinate2D, on mapView: GMSMapView, mode: NavMode, completion: @escaping (_ vehicleLocation: CLLocationCoordinate2D?, _ navInstruction: String?, _ direction: Double) -> Void){
-        print("Received start point: ", polylines.count, polylines)
+    public func drawRoute(from start: CLLocationCoordinate2D, to end: CLLocationCoordinate2D, on mapView: GMSMapView, mode: NavMode, completion: @escaping (_ vehicleLocation: CLLocationCoordinate2D?, _ finalDestination: CLLocationCoordinate2D?, _ direction: Double, _ navInstruction: String? ) -> Void){
         let now = CACurrentMediaTime()
         
         timeOfLastAPICall = now
@@ -49,6 +49,9 @@ class APICalls {
                 for route in routes
                 {
                     
+                    if self.route1 <= 1 {
+                        self.route1 += 1
+                    }
                     
                     let routeOverviewPolyline = route["overview_polyline"].dictionary
                     let points = routeOverviewPolyline?["points"]?.stringValue
@@ -68,26 +71,38 @@ class APICalls {
                     let startLat = startLocation?["lat"].double
                     let startLong = startLocation?["lng"].double
                     
+                    let endLocation = firstRoute?["end_location"]
+                    let endLat = endLocation?["lat"].double
+                    let endLong = endLocation?["lng"].double
+                    
                     let endPoint = firstRoute?["steps"]?.arrayValue[0].dictionary
                     
                     let microPolyline = endPoint?["polyline"]?.dictionary
                     let microPoints = microPolyline?["points"]?.stringValue
                     let navInstruction = endPoint?["html_instructions"]?.stringValue
+                    if let instruction = navInstruction {
+                        print("Nav Instruction: \(instruction.htmlToString)")
+                    }
+                    
                     if let latStart = startLat,
                         let longStart = startLong,
+                        let latEnd = endLat,
+                        let longEnd = endLong,
                         let microPointsValue = microPoints {
                         let vehicleLocation = CLLocationCoordinate2D(latitude: latStart, longitude: longStart)
+                        let finalDistination = CLLocationCoordinate2D(latitude: latEnd, longitude: longEnd)
+                        
                         let destination = GMSPath.init(fromEncodedPath: microPointsValue)
                         
                         let destinationCoordinate = destination?.coordinate(at: 1)
                         if let destCoord = destinationCoordinate {
                             let direction = self.getBearing(from: vehicleLocation, to: destCoord)
-                            completion(vehicleLocation, navInstruction, direction)
+                            completion(vehicleLocation, finalDistination, direction, navInstruction?.htmlToString)
                         } else {
-                            completion(vehicleLocation, navInstruction, 0)
+                            completion(nil, nil, 0, "")
                         }
                         
-                    } else {completion(nil, nil, 0)}
+                    } else {completion(nil, nil, 0, "")}
                     
                     
                 }
